@@ -1,20 +1,17 @@
-
 package com.avonlan.launcher
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,32 +20,42 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val preferences = getSharedPreferences(
+            "avonlan_settings",
+            MODE_PRIVATE
+        )
+
         setContent {
-            AvonlanHome()
+            var themeMode by remember {
+                mutableStateOf(
+                    AvonlanThemeMode.valueOf(
+                        preferences.getString("theme_mode", "SYSTEM")!!
+                    )
+                )
+            }
+
+            AvonlanTheme(mode = themeMode) {
+                AvonlanHome(
+                    themeMode = themeMode,
+                    onThemeChange = {
+                        themeMode = it
+                        preferences.edit()
+                            .putString("theme_mode", it.name)
+                            .apply()
+                    }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun AvonlanHome() {
-    val context = LocalContext.current
-    val preferences = context.getSharedPreferences(
-        "avonlan_settings",
-        android.content.Context.MODE_PRIVATE
-    )
-
-    var darkMode by remember {
-        mutableStateOf(preferences.getBoolean("dark_mode", true))
-    }
-
-    val background = if (darkMode) Color.Black else Color.White
-    val foreground = if (darkMode) Color.White else Color.Black
-
-    var currentTime by remember {
-        mutableStateOf(
-            SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        )
-    }
+fun AvonlanHome(
+    themeMode: AvonlanThemeMode,
+    onThemeChange: (AvonlanThemeMode) -> Unit
+) {
+    var currentTime by remember { mutableStateOf("") }
+    var menuExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -56,7 +63,8 @@ fun AvonlanHome() {
                 "HH:mm",
                 Locale.getDefault()
             ).format(Date())
-            kotlinx.coroutines.delay(1000)
+
+            delay(1000)
         }
     }
 
@@ -67,7 +75,7 @@ fun AvonlanHome() {
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = background
+        color = MaterialTheme.colorScheme.background
     ) {
         Box(
             modifier = Modifier
@@ -80,33 +88,48 @@ fun AvonlanHome() {
             ) {
                 Text(
                     text = currentTime,
-                    color = foreground,
                     fontSize = 76.sp,
-                    fontWeight = FontWeight.Light
+                    fontWeight = FontWeight.Light,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
                     text = currentDate,
-                    color = foreground.copy(alpha = 0.55f),
-                    fontSize = 14.sp
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onBackground.copy(
+                        alpha = 0.6f
+                    )
                 )
             }
 
-            TextButton(
-                onClick = {
-                    darkMode = !darkMode
-                    preferences.edit()
-                        .putBoolean("dark_mode", darkMode)
-                        .apply()
-                },
+            Box(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Text(
-                    text = if (darkMode) "LIGHT MODE" else "DARK MODE",
-                    color = foreground
-                )
+                TextButton(
+                    onClick = { menuExpanded = true }
+                ) {
+                    Text(
+                        text = "THEME: ${themeMode.name}",
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    AvonlanThemeMode.values().forEach { mode ->
+                        DropdownMenuItem(
+                            text = { Text(mode.name) },
+                            onClick = {
+                                onThemeChange(mode)
+                                menuExpanded = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }

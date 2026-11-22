@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
                 val packageName = info.activityInfo.packageName
                 val name = info.loadLabel(packageManager).toString()
 
-                if (packageName == packageName) {
+                if (packageName != this@MainActivity.packageName) {
                     LauncherApp(name, packageName)
                 } else null
             }

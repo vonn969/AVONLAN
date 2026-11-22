@@ -1,0 +1,2 @@
+# AVONLAN
+Miniamlist Android Launcher
